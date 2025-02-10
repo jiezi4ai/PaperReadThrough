@@ -128,7 +128,7 @@ class SemanticScholarKit:
         
         paper_metadata = []
         if results.total > 0:
-            for item in results:
+            for item in results[0:max_result]:
                 paper_metadata.append(item.__dict__.get('_data', {}))  
         return paper_metadata
 
@@ -163,7 +163,7 @@ class SemanticScholarKit:
         results = self.scholar.get_paper_references(paper_id, fields,limit)
 
         refs_metadata = []
-        for item in results:
+        for item in results[0:limit]:
             refs_metadata.append(item.__dict__.get('_data', {}))
         return refs_metadata
 
@@ -198,7 +198,7 @@ class SemanticScholarKit:
         results = self.scholar.get_paper_citations(paper_id, fields, limit)
     
         citedby_metadata = []
-        for item in results:
+        for item in results[0:limit]:
             citedby_metadata.append(item.__dict__.get('_data', {}))
         return citedby_metadata
 
@@ -226,6 +226,6 @@ class SemanticScholarKit:
             )
         
         rec_metadata = []
-        for item in results:
+        for item in results[0:limit]:
             rec_metadata.append(item.__dict__.get('_data', {}))
         return rec_metadata
