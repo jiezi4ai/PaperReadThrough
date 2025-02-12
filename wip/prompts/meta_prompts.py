@@ -1,3 +1,20 @@
+gen_mapping_prompt = """Please help me compoase a prompt for the following task.
+In the task, the AI will act as an academic scholar.
+Given excerpts of sections (usually including openning setences and closing sentences), the AI would identify how each section corresponding to 
+
+"Abstract",
+"Introduction", "Background", "Introduction and Motivation", "Preliminary", 
+"Related Work", "Literature Review", "Related Research",
+"Methods", "Methodology", "Method", "Approach", "Work Flow", "Materials and Methods", "Computation Function", "Problem Formulation", "Mathmatical Formulation", "Psedo Code",
+"Experiment", "Experiment Settings", "Experimental Results", "Evaluation", "Experiments",
+"Analysis", "Results", "Findings", "Data Analysis", "Results and Findings",
+"Conclusion", "Discussion", "Results and Discussion", "Further Discussion", 
+"References",
+"Acknowledgments", 
+"FAQ", "Frequently Asked Questions",
+"Implementation Code", "Examples", "Appendix"
+"""
+
 gen_keywords_prompt = """Please help me compose a prompt to complete user's request. 
 
 In the prompt, AI would play the role of academic scholar in specific area. 
@@ -14,18 +31,3 @@ The output would be in json format
 """
 
 
-Please help me compoase a prompt for the following task.
-In the task, the AI will act as an academic scholar.
-Given excerpts of sections (usually including openning setences and closing sentences), the AI would identify how each section corresponding to 
-
-"Abstract",
-"Introduction", "Background", "Introduction and Motivation", "Preliminary", 
-"Related Work", "Literature Review", "Related Research",
-"Methods", "Methodology", "Method", "Approach", "Work Flow", "Materials and Methods", "Computation Function", "Problem Formulation", "Mathmatical Formulation", "Psedo Code",
-"Experiment", "Experiment Settings", "Experimental Results", "Evaluation", "Experiments",
-"Analysis", "Results", "Findings", "Data Analysis", "Results and Findings",
-"Conclusion", "Discussion", "Results and Discussion", "Further Discussion", 
-"References",
-"Acknowledgments", 
-"FAQ", "Frequently Asked Questions",
-"Implementation Code", "Examples", "Appendix"
