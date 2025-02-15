@@ -12,22 +12,28 @@ from typing import Optional, List, Tuple, Iterator, Dict
 DEF_TOLERANCE: float = 1e-5
 
 @dataclass
+class Point:
+    x: float
+    y: float
+
+@dataclass
 class ToCEntry:
     """A single entry in the table of contents"""
     level: int
     title: str
     pagenum: int
+    pos: Optional[Point] = None
     # vpos == bbox.top, used for sorting
-    vpos: Optional[float] = None
+    # vpos: Optional[float] = None
 
     @staticmethod
-    def key(e) -> Tuple[int, float]:
+    def key(e) -> Tuple[int, Point]:
         """Key used for sorting"""
-        return (e.pagenum, 0 if e.vpos is None else e.vpos)
+        return (e.pagenum, 0 if e.pos is None else e.pos)
 
     def to_fitz_entry(self) -> list:
         return ([self.level, self.title, self.pagenum] +
-                [self.vpos] * (self.vpos is not None))
+                [self.pos] * (self.pos is not None))
 
 
 def get_file_encoding(path: str) -> str:
@@ -327,7 +333,9 @@ class Recipe:
             # not a text block
             return []
 
-        vpos = block.get('bbox', (0, 0))[1]
+        bbox = block.get('bbox', (0, 0, 0, 0)) # 确保 bbox 至少有四个值
+        pos = Point(bbox[0], bbox[1]) # 使用 Point 结构替换 vpos 
+        # vpos = block.get('bbox', (0, 0))[1]
 
         try:
             frags = chain.from_iterable([
@@ -336,12 +344,12 @@ class Recipe:
             titles = concatFrag(frags)
 
             return [
-                ToCEntry(level, title, page, vpos)
+                ToCEntry(level, title, page, pos)
                 for level, title in titles.items()
             ]
         except FoundGreedy as e:
             # return the entire block as a single entry
-            return [ToCEntry(e.level, blk_to_str(block), page, vpos)]
+            return [ToCEntry(e.level, blk_to_str(block), page, pos)]
 
 
 def extract_toc(doc: Document, recipe: Recipe) -> List[ToCEntry]:

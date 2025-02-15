@@ -25,6 +25,7 @@ def detect_lang(string):
             return 'zh'
     return 'en'
 
+
 def unzip_file(original_zip_file, destination_folder):
     assert os.path.splitext(original_zip_file)[-1] == '.zip'
     with zipfile.ZipFile(original_zip_file, 'r') as zip_ref:
@@ -43,7 +44,6 @@ def download_file(url, filename):
         print(f"Successfully downloaded: {filename}")
     except requests.exceptions.RequestException as e:
         print(f"Error downloading: {e}")
-
 
 
 class MinerUKit:
