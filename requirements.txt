@@ -1,0 +1,8 @@
+pandas
+arxiv
+json-repair
+free-proxy
+ollama 
+sentence-transformers
+google-genai
+semanticscholar

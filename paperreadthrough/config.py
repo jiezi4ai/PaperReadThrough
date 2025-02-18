@@ -12,7 +12,7 @@ CONFIG = {
         'TIMELENGTH': 7,  # datelength of past 7 days
     },
     'ARXIV':{
-        'DOMAIN': ['cs', 'stat'],  # domain refer to http://export.arxiv.org/oai2?verb=ListSets
+        'DOMAIN': ['stat'], #  ['cs', 'stat'],  # domain refer to http://export.arxiv.org/oai2?verb=ListSets
         'CATEGORY':  # category refer to https://arxiv.org/category_taxonomy
             ['cs.CV', 'cs.CL', 'cs.AI', 'cs.LG', 'cs.RO', 'cs.SI', 'cs.IR', 'stat.AP', 'stat.ML'],
     },
@@ -30,7 +30,7 @@ CONFIG = {
         ]
     },
     'DATABASE': {  # params on database
-        'DB_PATH': '/home/jiezi/Code/Github/TrendingPapers/data/',
+        'DB_PATH': '/home/jiezi/Code/GitHub/TrendingPapers/data',
         'DB_NAME': 'trending_papers.db',
 
         'OAI_PAPER_TBL_NM': "oai_paper_pool",  # table for preprint paper metadata (batch trhough OAI)
