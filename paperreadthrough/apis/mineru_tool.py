@@ -1,4 +1,7 @@
 # minerU API from https://mineru.net/apiManage/docs
+# Note: 
+# 1. recommend batch process for efficiency
+# To-do 
 # Note: monitor_batch_status need to be further tested
 import os
 import time
@@ -7,11 +10,13 @@ import copy
 import zipfile
 import requests
 import threading
+from pathlib import Path  
 from typing import List, Dict, Optional
 
 TASK_URL = "https://mineru.net/api/v4/extract/task"
 BATCH_URL = "https://mineru.net/api/v4/file-urls/batch"
 BATCH_STATUS_URL = "https://mineru.net/api/v4/extract-results/batch"
+
 
 def detect_lang(string):
     """
@@ -30,6 +35,7 @@ def unzip_file(original_zip_file, destination_folder):
     assert os.path.splitext(original_zip_file)[-1] == '.zip'
     with zipfile.ZipFile(original_zip_file, 'r') as zip_ref:
         zip_ref.extractall(destination_folder)
+        print(f"Successfully unzipped: {destination_folder}")
 
 
 def download_file(url, filename):
@@ -63,7 +69,7 @@ class MinerUKit:
             "enable_table": True
         }
 
-    def single_process_request(self, pdf_url, if_ocr, lang):
+    def single_process_url(self, pdf_url, if_ocr, lang):
         """apply MinerU API to process single PDF
         """
         data = copy.deepcopy(self.config)
@@ -157,6 +163,13 @@ class MinerUKit:
         download_file(zip_url, download_file_name)
         unzip_file(download_file_name, unzip_folder_name)
         os.remove(download_file_name) 
+
+        for file in Path(unzip_folder_name).glob('*'): 
+            file_nm = os.path.basename(file)
+            if "_origin.pdf" in file_nm:
+                os.remove(file) 
+            elif "_content_list.json" in file_nm:
+                os.rename(file, os.path.join(unzip_folder_name, "content_list.json"))
 
     def monitor_batch_status(self, batch_id, save_path, interval=10, max_retries=10):
         """

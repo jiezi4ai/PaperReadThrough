@@ -4,54 +4,78 @@
 import re 
 from typing import List, Dict, Optional
 
-class MdSeg:
-    def __init__(self, md_content):
-        self.md_content = md_content
+class PDFSeg:
+    def __init__(self, pdf_json):
+        self.pdf_json = pdf_json
 
-    def md_seg_by_title(self, level):
-        title_pattern = re.compile(rf"^#{{{level}}}\s+(.+)$", re.MULTILINE)
-        lines = self.md_content.splitlines()
+    def get_toc_hierachy(self):
+        """generate ToC tree
+        Args:
+            pdf_json:
+        Returns:
+            tree form hierachy of sections
+        """
+        toc = []
+        section_stack = []
 
-        segments = []
-        current_section = ""
-        current_title = ""
+        for i, item in enumerate(self.pdf_json):
+            if item['type'] == 'title':
+                level = item['text_level']
+                title = item['text']
 
-        num = 1  # Initialize section number
-        para_id = 1  # initialize pragraph number
-        for line in lines:
-            if line.strip() not in ["\n", "\s", "\r", ""] and len(line) < 100:
-                match = title_pattern.match(line)
-                if match:
-                    if current_section:  # Save the previous section
-                        segments.append({
-                            'level': level,
-                            'num': num,
-                            'title': current_title,
-                            'text': current_section.strip(),  # Remove leading/trailing whitespace
-                        })
-                        num += 1  # Increment for the next section
+                while section_stack and section_stack[-1]['level'] >= level:
+                    popped_section = section_stack.pop()
+                    popped_section['end_position'] = i - 1
+                    if section_stack:
+                        section_stack[-1]['subsection'].append(popped_section)
+                    else:
+                        toc.append(popped_section)
+
+                new_section = {'title': title, 'level': level, 'start_position': i, 'end_position': -1, 'subsection': []}
+                section_stack.append(new_section)
+
+        while section_stack:
+            popped_section = section_stack.pop()
+            popped_section['end_position'] = len(self.pdf_json) - 1
+            if section_stack:
+                section_stack[-1]['subsection'].append(popped_section)
+            else:
+                toc.append(popped_section)
+
+        return toc
+    
+    def gen_segmentation(self, toc_hierachy, seg_text_length:Optional[int]=20000):
+        """segment content json based on toc hierachy"""
+        pdf_texts = [item.get('text', '') for item in self.pdf_json]
+
+        all_seg_paras = []
+        for section in toc_hierachy:
+            section_paras = []
+            
+            start_pos = section['start_position']
+            end_pos = section['end_position']
+            
+            if len(tmp_text) > seg_text_length and section.get('subsection', []) != []:
+                # if the section is too long, then breakdown to subsection
+                for subsection in section.get('subsection'):
+                    sub_start_pos = subsection['start_position']
+                    sub_end_pos = subsection['end_position']
+                    section_paras.append(self.pdf_json[sub_start_pos:sub_end_pos+1])
+                    tmp_text = "\n".join(pdf_texts[start_pos:end_pos+1])
+                    print('subsection', subsection, len(tmp_text))
+            else:
+                section_paras.append(self.pdf_json[start_pos:end_pos+1])
+                tmp_text = "\n".join(pdf_texts[start_pos:end_pos+1])
+                print('section', section, len(tmp_text))
                     
-                    # ready for next section
-                    current_title = match.group(1).strip()
-                    current_section = ""  # Start a new section (no title line)
-                    para_id = 1
-                else:
-                    current_section += line + "\n"  # Add to the current section
-                    para_id += 1
+            all_seg_paras.extend(section_paras)
+        return all_seg_paras
 
-        if current_section:  # Save the last section
-            segments.append({
-                'level': level,
-                'num': num,
-                'title': current_title,
-                'text': current_section.strip()
-            })
-
-        return segments
-
-
-    def restore_seg_information(md_text, img_lst, tbl_lst, ref_lst):
-        """restore images, tables, references within md_text
+    def restore_seg_information(self, seg_paras):
+        """restore images, tables, references within segments
+        Args:
+            seg_paras: PDF content json organized in segments, data from gen_segmentation function
+            img_lst, tbl_lst: 
         """
         lines = md_text.splitlines()
         seg_images, seg_tbls, seg_refs = [], [], []

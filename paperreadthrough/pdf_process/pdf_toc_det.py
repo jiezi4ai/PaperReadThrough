@@ -334,7 +334,7 @@ class Recipe:
             return []
 
         bbox = block.get('bbox', (0, 0, 0, 0)) # 确保 bbox 至少有四个值
-        pos = Point(bbox[0], bbox[1]) # 使用 Point 结构替换 vpos 
+        pos = Point(bbox[2], bbox[3]) # 使用 Point 结构替换 vpos 
         # vpos = block.get('bbox', (0, 0))[1]
 
         try:

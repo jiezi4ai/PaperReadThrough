@@ -12,4 +12,4 @@ SECTION_TITLES = ["Abstract",
                 'References',
                 "Acknowledgments", "Appendix", "FAQ", "Frequently Asked Questions"]
 
-APPENDDIX_TITLES = ["References", "Acknowledgments", "Appendix", "FAQ", "Frequently Asked Questions"]     
+APPENDDIX_TITLES = ["Reference", "Acknowledgment", "Appendix", "FAQ", "Frequently Asked Question"]     
