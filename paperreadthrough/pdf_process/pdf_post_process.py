@@ -9,7 +9,7 @@ import string
 from bs4 import BeautifulSoup
 from thefuzz import fuzz # pip install thefuzz  https://github.com/seatgeek/thefuzz
 
-from pdf_process import APPENDDIX_TITLES
+from pdf_process import APPENDDIX_TITLES, IMG_REGX_NAME_PTRN, TBL_REGX_NAME_PTRN, EQT_REGX_NAME_PTRN
 
 
 def remove_non_text_chars(text, with_digits: Optional[bool]=True):
@@ -98,8 +98,7 @@ class PDFProcess:
         for item in self.pdf_json:
             if item['type'] in ['image']:
                 desc = "\n".join(item.get('img_caption', [])) + "\n" + "\n".join(item.get('img_footnote', []))
-                ptrn = r"(pic|picture|img|image|chart|figure|fig|table|tbl)\s*([0-9]+(?:\.[0-9]+)?|[0-9]+|[IVXLCDM]+|[a-zA-Z]+)"
-                mtch_rslts = re.finditer(ptrn, desc, re.IGNORECASE)
+                mtch_rslts = re.finditer(IMG_REGX_NAME_PTRN, desc, re.IGNORECASE)
 
                 img_ids = []
                 for match in mtch_rslts:
@@ -115,8 +114,7 @@ class PDFProcess:
 
             elif item['type'] == 'table':
                 desc = "\n".join(item.get('table_caption', [])) + "\n" + "\n".join(item.get('table_footnote', []))
-                ptrn = r"(tbl|table|chart|figure|fig)\s*([0-9]+(?:\.[0-9]+)?|[0-9]+|[IVXLCDM]+|[a-zA-Z]+)"
-                mtch_rslts = re.finditer(ptrn, desc, re.IGNORECASE)
+                mtch_rslts = re.finditer(TBL_REGX_NAME_PTRN, desc, re.IGNORECASE)
 
                 tbl_ids = []
                 for match in mtch_rslts:
@@ -132,8 +130,7 @@ class PDFProcess:
 
             elif item['type'] == 'equation':
                 desc = item.get('text')
-                ptrn = r"(formula|equation|notation|syntax)\s*([0-9]+(?:\.[0-9]+)?|[0-9]+|[IVXLCDM]+|[a-zA-Z]+)"
-                mtch_rslts = re.finditer(ptrn, desc, re.IGNORECASE)
+                mtch_rslts = re.finditer(EQT_REGX_NAME_PTRN, desc, re.IGNORECASE)
 
                 equation_ids = []
                 for match in mtch_rslts:

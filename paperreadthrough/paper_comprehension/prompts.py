@@ -3,14 +3,14 @@
 # - keywords
 # - tags
 # - section_type
-additional_example_json = {
+tags_example_json = {
     "field_of_study": ["Political Science", "Social Media Studies", "Communication Studies", "Sociology, Digital Culture"],
     "keywords": ["social media usage", "political polarization", "mixed-methods approach", "semi-structured interviews"],
     "tags": ["online behavior", "echo chambers", "survey methodology", "young adults", "political communication", "digital ethnography", "ideology"],
     "section_type": ["abstract", "introduction"]
 }
 
-additional_info_prompt = """You are a sophisticated academic scholar with expertise in {domain}. 
+tags_info_prompt = """You are a sophisticated academic scholar with expertise in {domain}. 
 You are renowned for your ability to quickly grasp the core concepts of research papers and expertly categorize and tag information for optimal organization and retrieval.
 
 ## TASK
@@ -141,9 +141,9 @@ Given abstraction and introduction paragraph from the paper, you are asked to:
 
 ## CONTEXT
 Here are abstraction from the paper:
-<abstraction>
-{abstraction}
-</abstraction>
+<abstract>
+{abstract}
+</abstract>
 
 Here are introduction from the paper:
 <introduction>
@@ -162,7 +162,7 @@ Follow the format of the output that follows:
 - (5):xxx.\n\n  
 ```
 
-Be sure to use {lang} answers (proper nouns need to be marked in English), statements as concise and academic as possible.
+Be sure to make answers, statements as concise and academic as possible.
 Do not have too much repetitive information, numerical values using the original numbers.
 Be sure to strictly follow the format, the corresponding content output to xxx, in accordance with \n line feed.                 
 """
@@ -194,7 +194,7 @@ Follow the format of the output that follows:
 - (3):xxx;\n  
 ....... \n\n     
 ```
-Be sure to use {lang} answers (proper nouns need to be marked in English), statements as concise and academic as possible.
+Be sure to make answers, statements as concise and academic as possible.
 Do not repeat the content of the previous <summary>, the value of the use of the original numbers.
 Be sure to strictly follow the format, the corresponding content output to xxx, in accordance with \n line feed, ....... means fill in according to the actual requirements.                 
 """
