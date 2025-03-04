@@ -90,11 +90,9 @@ class TopicGen:
             api_key=self.api_key, model_name=self.model_name, 
             qa_prompt=qa_prompt, sys_prompt=None, temperature=self.temperature)
         return res
-    
 
     def paper_conclusion(self, paper_metadata, topics):
         """conclude key points, highlights, etc for paper"""
-
         abs_md_text = paper_metadata.get('abstract')
 
         intro_md_text, met_text, con_md_text = "", "", ""

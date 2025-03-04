@@ -7,8 +7,8 @@ from typing import List, Dict, Optional
 
 from pdf_process.pdf_meta_det import extract_meta, dump_toml
 from pdf_process.pdf_toc_det import gen_toc
-
 from pdf_process import SECTION_TITLES, APPENDDIX_TITLES
+
 
 def count_by_keys(lst_dct, keys):
     """get item count within a list of dict by specified dict keys

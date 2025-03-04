@@ -1,8 +1,25 @@
-# Prompt to extract addtional information, including:
-# - field_of_study
-# - keywords
-# - tags
-# - section_type
+reference_example_json = {
+  'title': 'Towards System 2 Reasoning in LLMs: Learning How to Think With Meta Chain-of-Thought',
+  'url': 'https://www.semanticscholar.org/paper/0e63a3aebf14fc7a68c0df7a922770bde5b77360',
+  'venue': 'arXiv.org',
+  'year': 2025,
+  'journal': {'name': 'ArXiv', 'volume': 'abs/2501.04682'},
+  'doi': '10.48550/arXiv.2501.04682'
+}
+        
+extract_ref_prompt = """Please extract reference paper information from the input text. 
+Output in json with format like:
+{reference_example_json}
+Do not include anything else.
+
+## INPUT
+{input_text}
+
+## OUTPUT
+Now get started. Provide only json result here:
+
+"""
+
 tags_example_json = {
     "field_of_study": ["Political Science", "Social Media Studies", "Communication Studies", "Sociology, Digital Culture"],
     "keywords": ["social media usage", "political polarization", "mixed-methods approach", "semi-structured interviews"],

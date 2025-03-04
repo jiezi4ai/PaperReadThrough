@@ -4,14 +4,14 @@
 # To-do 
 # Note: monitor_batch_status need to be further tested
 import os
-import time
 import uuid
 import copy
 import zipfile
+import aiohttp
+import asyncio
 import requests
-import threading
 from pathlib import Path  
-from typing import List, Dict, Optional
+from typing import List, Optional
 
 TASK_URL = "https://mineru.net/api/v4/extract/task"
 BATCH_URL = "https://mineru.net/api/v4/file-urls/batch"
@@ -69,94 +69,102 @@ class MinerUKit:
             "enable_table": True
         }
 
-    def single_process_url(self, pdf_url, if_ocr, lang):
-        """apply MinerU API to process single PDF
+
+    async def single_process_url_async(self, pdf_url, if_ocr, lang):
+        """apply MinerU API to process single PDF asynchronously
         """
         data = copy.deepcopy(self.config)
         data['url'] = pdf_url
         data['is_ocr'] = if_ocr
         data['language'] = lang
-        response = requests.post(url=self.task_url, headers=self.header, json=data)
-        print(response.status_code)
-        return response
-    
-    def batch_process_files(self, pdf_files:List[str], if_ocr:Optional[bool]=False, lang:Optional[str]='en'):
-        """apply MinerU API to process multiple PDF in local path
+        async with aiohttp.ClientSession() as session: # 使用 aiohttp.ClientSession()
+            async with session.post(url=self.task_url, headers=self.header, json=data) as response: # 使用 session.post
+                print(response.status) # aiohttp 中 status 是属性，不是 status_code
+                return await response.read() # 使用 await response.read() 获取响应内容，或者 response.json() 获取 JSON 数据
+
+
+    async def batch_process_files_async(self, pdf_files: List[str], if_ocr: Optional[bool]=False, lang: Optional[str]='en'):
+        """apply MinerU API to process multiple PDF in local path asynchronously
         """
         files = []
         for file in pdf_files:
             files.append({"name": os.path.basename(file),
-                          "data_id": str(uuid.uuid1())})
+                        "data_id": str(uuid.uuid1())})
         data = copy.deepcopy(self.config)
         data['is_ocr'] = if_ocr
         data['language'] = lang
         data['files'] = files
 
         try:
-            response = requests.post(url=self.batch_url,headers=self.header,json=data)
-            if response.status_code == 200:
-                result = response.json()
-                print('response success. result:{}'.format(result))
-                if result["code"] == 0:
-                    batch_id = result["data"]["batch_id"]
-                    urls = result["data"]["file_urls"]
-                    print('batch_id:{},urls:{}'.format(batch_id, urls))
+            async with aiohttp.ClientSession() as session: # 使用 aiohttp.ClientSession()
+                async with session.post(url=self.batch_url, headers=self.header, json=data) as response: # 使用 session.post
+                    if response.status == 200: # aiohttp 中 status 是属性，不是 status_code
+                        result = await response.json() # 使用 await response.json() 获取 JSON 数据
+                        print('response success. result:{}'.format(result))
+                        if result["code"] == 0:
+                            batch_id = result["data"]["batch_id"]
+                            urls = result["data"]["file_urls"]
+                            print('batch_id:{},urls:{}'.format(batch_id, urls))
 
-                    for idx, file_path in enumerate(pdf_files):
-                        with open(file_path, 'rb') as f:
-                            res_upload = requests.put(urls[idx], data=f)
-                        if res_upload.status_code == 200:
-                            print("upload success")
+                            for idx, file_path in enumerate(pdf_files):
+                                with open(file_path, 'rb') as f:
+                                    async with session.put(urls[idx], data=f) as res_upload: # 使用 session.put
+                                        if res_upload.status == 200: # aiohttp 中 status 是属性，不是 status_code
+                                            print("upload success")
+                                        else:
+                                            print("upload failed")
                         else:
-                            print("upload failed")
-                else:
-                    print('apply upload url failed,reason:{}'.format(result.msg))
-            else:
-                print('response not success. status:{} ,result:{}'.format(response.status_code, response))
-            return response
+                            print('apply upload url failed,reason:{}'.format(result.get("msg"))) # 使用 result.get("msg") 避免 KeyError
+                    else:
+                        print('response not success. status:{} ,result:{}'.format(response.status, response)) # aiohttp 中 status 是属性，不是 status_code
+                    return response # 返回 aiohttp 的 response 对象
         except Exception as err:
             print(err)
-        
+
         return None
 
-    def batch_process_urls(self, pdf_urls:List[str], if_ocr:Optional[bool]=False, lang:Optional[str]='en'):
-        """apply MinerU API to process multiple PDF urls
+
+    async def batch_process_urls_async(self, pdf_urls: List[str], if_ocr: Optional[bool]=False, lang: Optional[str]='en'):
+        """apply MinerU API to process multiple PDF urls asynchronously
         """
         files = []
         for pdf_url in pdf_urls:
             files.append({"url": pdf_url,
-                          "data_id": str(uuid.uuid1())})
+                        "data_id": str(uuid.uuid1())})
         data = copy.deepcopy(self.config)
         data['is_ocr'] = if_ocr
         data['language'] = lang
         data['files'] = files
 
         try:
-            response = requests.post(url=self.batch_url, headers=self.header, json=data)
-            if response.status_code == 200:
-                result = response.json()
-                print('response success. result:{}'.format(result))
-                if result["code"] == 0:
-                    batch_id = result["data"]["batch_id"]
-                    print('batch_id:{}'.format(batch_id))
-                else:
-                    print('submit task failed,reason:{}'.format(result.msg))
-            else:
-                print('response not success. status:{} ,result:{}'.format(response.status_code, response))
-            return response
+            async with aiohttp.ClientSession() as session: # 使用 aiohttp.ClientSession()
+                async with session.post(url=self.batch_url, headers=self.header, json=data) as response: # 使用 session.post
+                    if response.status == 200: # aiohttp 中 status 是属性，不是 status_code
+                        result = await response.json() # 使用 await response.json() 获取 JSON 数据
+                        print('response success. result:{}'.format(result))
+                        if result["code"] == 0:
+                            batch_id = result["data"]["batch_id"]
+                            print('batch_id:{}'.format(batch_id))
+                        else:
+                            print('submit task failed,reason:{}'.format(result.get("msg"))) # 使用 result.get("msg") 避免 KeyError
+                    else:
+                        print('response not success. status:{} ,result:{}'.format(response.status, response)) # aiohttp 中 status 是属性，不是 status_code
+                    return response # 返回 aiohttp 的 response 对象
         except Exception as err:
             print(err)
 
         return None
 
-    def batch_status_check(self, batch_id):
+
+    async def batch_status_check_async(self, batch_id): # 假设 batch_status_check 已经有异步版本
         """check status code of batch task
         """
-        url = f'{self.batch_status_url}/{batch_id}'
-        res = requests.get(url=url, headers=self.header)
-        print(res.status_code)
-        # print(res.json())
-        return res
+        async with aiohttp.ClientSession() as session:
+            url = f'{self.batch_status_url}/{batch_id}'
+            headers = self.header
+            async with session.get(url, headers=headers) as response:
+                return response 
+            
     
     def download_and_unzip(self, zip_url, download_file_name, unzip_folder_name):
         """download and unzip MinerU processed files"""
@@ -171,28 +179,28 @@ class MinerUKit:
             elif "_content_list.json" in file_nm:
                 os.rename(file, os.path.join(unzip_folder_name, "content_list.json"))
 
-    def monitor_batch_status(self, batch_id, save_path, interval=10, max_retries=10):
-        """
-        monitor batch run status, try to download with max_retries
 
+    async def monitor_batch_status_async(self, batch_id, save_path, interval=10, max_retries=10):
+        """
+        异步监控批次运行状态，尝试下载，最大重试次数
         Args:
             batch_id: batch id
-            save_path: path to save processed files (in folder whose name aligned with orginal pdf)
-            interval: time interval for next check (in seconds)
-            max_retries: max retries
+            save_path: 保存处理后文件的路径 (文件夹名称与原始 pdf 对齐)
+            interval: 下次检查的时间间隔 (秒)
+            max_retries: 最大重试次数
         Note:
-            processed data would saved into folders whose name aligned with orginal pdf.
-            files include:
-                - full.md: final markdown file
-                - _content_list.json: paragraph information
-                - layout.json: detailed positions, etc.
+            处理后的数据将保存到文件夹中，文件夹名称与原始 pdf 对齐。
+            文件包括:
+                - full.md: 最终 markdown 文件
+                - _content_list.json: 段落信息
+                - layout.json: 详细位置等。
         """
         downloaded_files = set()  # 记录已下载的文件名，避免重复下载
 
         for _ in range(max_retries):
-            running_res = self.batch_status_check(batch_id)
-            if running_res.json().get('msg') == 'ok':
-                results = running_res.json().get('data', {}).get('extract_result', [])
+            running_res = await self.batch_status_check_async(batch_id) # 使用异步的 batch_status_check_async
+            if (await running_res.json()).get('msg') == 'ok': # await 获取 json 内容
+                results = (await running_res.json()).get('data', {}).get('extract_result', []) # await 获取 json 内容
                 for item in results:
                     if item.get('state') == 'done':
                         file_name = item.get('file_name')
@@ -202,22 +210,21 @@ class MinerUKit:
                             download_file_name = os.path.join(save_path, file_name_nosuffix + ".zip")
                             unzip_folder_name = os.path.join(save_path, file_name_nosuffix)
 
-                            # 使用线程下载并解压，避免阻塞主线程
-                            thread = threading.Thread(
-                                target=self.download_and_unzip,
-                                args=(zip_url, download_file_name, unzip_folder_name)
+                            # 使用 asyncio.to_thread 异步执行 CPU 密集型或同步 I/O 操作，避免阻塞事件循环
+                            await asyncio.to_thread(
+                                self.download_and_unzip,
+                                zip_url, download_file_name, unzip_folder_name
                             )
-                            thread.start()
 
                             downloaded_files.add(file_name)  # 标记为已下载
-                
+
                 # 检查是否全部完成
                 all_done = all(item.get('state') == 'done' for item in results)
                 if all_done:
-                    print(f"Batch {batch_id} complte")
+                    print(f"Batch {batch_id} complete") # 拼写错误修正：complte -> complete
                     return
 
             print(f"Batch {batch_id} running, recheck in next {interval} seconds...")
-            time.sleep(interval)
+            await asyncio.sleep(interval) # 使用 asyncio.sleep 进行非阻塞等待
 
         print(f"Exit as batch {batch_id} reached max retries.")

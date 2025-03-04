@@ -38,6 +38,7 @@ def text_patial_match(shorter_text, longer_text, with_digits: Optional[bool]=Tru
     longer_text = remove_non_text_chars(longer_text, with_digits).lower()
     return fuzz.partial_ratio(shorter_text, longer_text)
 
+
 class PDFProcess:
     def __init__(self, pdf_path, pdf_toc, pdf_json):
         """load pdf related files and data
@@ -51,7 +52,7 @@ class PDFProcess:
         self.pdf_json = pdf_json
 
     # match title information from content list to that from PDF ToC
-    def align_md_toc(self):
+    def align_content_toc(self):
         """match title information from content list to that from PDF ToC"""
         mtched_toc_idx = []
         for idx1, item1 in enumerate(self.pdf_json):  # enumerate content json for titles
@@ -88,97 +89,148 @@ class PDFProcess:
                                 mtched_toc_idx.append(idx2)
                                 break
 
-    def align_content_json(self):
-        """assign ids to images, tables and equations so as to better identify them in text
-        Note:
-            id: an unique identifier for each image, table and equation
-            related_ids: other related ids of images, tables and equation that discussed in context 
-        """
-        i, j, k = 0, 0, 0
-        for item in self.pdf_json:
+    def align_content_images(self):
+        """align and standardize image information"""
+        img_id_lst = []  # store all images ids
+
+        for idx, item in enumerate(self.pdf_json):
             if item['type'] in ['image']:
-                desc = "\n".join(item.get('img_caption', [])) + "\n" + "\n".join(item.get('img_footnote', []))
-                mtch_rslts = re.finditer(IMG_REGX_NAME_PTRN, desc, re.IGNORECASE)
+                if item['img_caption'] == [] and item['img_footnote'] == []:  # without caption and footnote in the block
+                    prev_pos, next_pos = 9999, 9999
+                    prev_id, next_id = None, None
+                    prev_img_ids, next_img_ids = [], []
 
-                img_ids = []
-                for match in mtch_rslts:
-                    img_ids.append(match.group(0))  # 直接获取整个匹配的字符串
+                    # check next block for image description info
+                    if idx < len(self.pdf_json) - 1 and self.pdf_json[idx+1]['type'] == 'text' and self.pdf_json[idx+1].get('text') is not None:
+                        next_item = self.pdf_json[idx+1]
+                        mtch_rslts = re.finditer(IMG_REGX_NAME_PTRN, next_item['text'], re.IGNORECASE)
 
-                if len(img_ids) == 0:
-                    img_ids = [f"Image_Number_{i}"]
-                    i += 1
+                        next_img_ids = []
+                        for match in mtch_rslts:
+                            next_img_ids.append(match.group(0)) 
 
-                item['id'] = img_ids[0]
-                item['related_ids'] = img_ids[1:]
-                item['if_aligned'] = True
-
-            elif item['type'] == 'table':
-                desc = "\n".join(item.get('table_caption', [])) + "\n" + "\n".join(item.get('table_footnote', []))
-                mtch_rslts = re.finditer(TBL_REGX_NAME_PTRN, desc, re.IGNORECASE)
-
-                tbl_ids = []
-                for match in mtch_rslts:
-                    tbl_ids.append(match.group(0))  # 直接获取整个匹配的字符串
-
-                if len(tbl_ids) == 0:
-                    tbl_ids = [f"Table_Number_{j}"]
-                    j += 1
-
-                item['id'] = tbl_ids[0]
-                item['related_ids'] = tbl_ids[1:]
-                item['if_aligned'] = True
-
-            elif item['type'] == 'equation':
-                desc = item.get('text')
-                mtch_rslts = re.finditer(EQT_REGX_NAME_PTRN, desc, re.IGNORECASE)
-
-                equation_ids = []
-                for match in mtch_rslts:
-                    equation_ids.append(match.group(0))  # 直接获取整个匹配的字符串
-
-                if len(equation_ids) == 0:
-                    equation_ids = [f"Equation_Number_{k}"]
-                    k += 1
-
-                item['id'] = equation_ids[0]
-                item['related_ids'] = equation_ids[1:]
-                item['if_aligned'] = True
-
-
-    def align_reference_info(self, reference_metadata):
-        """"identify reference items in pdf content json"""
-        start_pos = 0
-        end_pos = len(self.pdf_json)
-
-        # search for reference title postion as start 
-        for i in range(len(self.pdf_json)):
-            if self.pdf_json[i].get('text_level') == 1:
-                if text_match(self.pdf_json[i].get('text'), 'Reference', False) > 90:
-                    start_pos = i + 1
-                    break
-
-        if start_pos > 0:
-            for j in range(start_pos, len(self.pdf_json)):
-                if self.pdf_json[j].get('text_level') is not None:
-                    end_pos = j
-                    break
-
-        for idx in range(start_pos, end_pos):
-            item = self.pdf_json[idx]
-            if item.get('type') == 'text' and len(item.get('text')) < 500:
-                if len(reference_metadata) > 0:
-                    for ref in reference_metadata:
-                        title = ref.get('citedPaper', {}).get('title')
-                        ss_paper_id = ref.get('citedPaper', {}).get('paperId')
-                        if title:
-                            match_ratio = text_patial_match(title, item.get('text'), True) 
-                            if match_ratio > 80:
-                                item['if_aligned'] = True
-                                item['type'] = "reference"
-                                item['ss_paper_id'] = ss_paper_id
+                        for id in next_img_ids:
+                            if id not in img_id_lst:
+                                next_id = id
+                                next_pos = next_item['text'].index(id)
+                                next_img_ids = next_img_ids.remove(id)
                                 break
-                else:
-                    if start_pos > 0 and end_pos < len(self.pdf_json) and start_pos < end_pos:
+
+                    # check previous block for image description info
+                    if idx > 1 and self.pdf_json[idx-1]['type'] == 'text' and self.pdf_json[idx-1].get('text') is not None:
+                        prev_item = self.pdf_json[idx-1]
+                        mtch_rslts = re.finditer(IMG_REGX_NAME_PTRN, prev_item['text'], re.IGNORECASE)
+
+                        prev_img_ids = []
+                        for match in mtch_rslts:
+                            prev_img_ids.append(match.group(0)) 
+
+                        for id in prev_img_ids:
+                            if id not in img_id_lst:
+                                prev_id = id
+                                prev_pos = prev_item['text'].index(id)
+                                prev_img_ids = prev_img_ids.remove(id)
+                                break
+                    
+                    if next_pos < prev_pos:
+                        item['id'] = next_id
+                        item['related_ids'] = next_img_ids
                         item['if_aligned'] = True
-                        item['type'] = "reference"
-                        item['ss_paper_id'] = None
+                        item['img_caption'] = [next_item['text']]
+                        next_item['if_aligned'] = False
+
+                    elif prev_pos < next_pos:
+                        item['id'] = prev_id
+                        item['related_ids'] = prev_img_ids
+                        item['if_aligned'] = True
+                        item['img_caption'] = [prev_item['text']]
+                        prev_item['if_aligned'] = False
+                        
+                else:
+                    desc = "\n".join(item.get('img_caption', [])) + "\n" + "\n".join(item.get('img_footnote', []))
+                    mtch_rslts = re.finditer(IMG_REGX_NAME_PTRN, desc, re.IGNORECASE)
+
+                    img_ids = []
+                    for match in mtch_rslts:
+                        img_ids.append(match.group(0)) 
+                    
+                    for id in img_ids:
+                        if id not in img_id_lst:
+                            break
+
+                    item['id'] = id
+                    item['related_ids'] = img_ids.remove(id)
+                    item['if_aligned'] = True
+
+
+    def align_content_images(self):
+        """align and standardize image information"""
+        tbl_id_lst = []  # store all table ids
+
+        for idx, item in enumerate(self.pdf_json):
+            if item['type'] in ['table']:
+                if item['table_caption'] == [] and item['table_footnote'] == []:  # without caption and footnote in the block
+                    prev_pos, next_pos = 9999, 9999
+                    prev_id, next_id = None, None
+                    prev_img_ids, next_img_ids = [], []
+
+                    # check next block for image description info
+                    if idx < len(self.pdf_json) - 1 and self.pdf_json[idx+1]['type'] == 'text' and self.pdf_json[idx+1].get('text') is not None:
+                        next_item = self.pdf_json[idx+1]
+                        mtch_rslts = re.finditer(IMG_REGX_NAME_PTRN, next_item['text'], re.IGNORECASE)
+
+                        next_tbl_ids = []
+                        for match in mtch_rslts:
+                            next_tbl_ids.append(match.group(0)) 
+
+                        for id in next_tbl_ids:
+                            if id not in tbl_id_lst:
+                                next_id = id
+                                next_pos = next_item['text'].index(id)
+                                next_tbl_ids = next_tbl_ids.remove(id)
+                                break
+
+                    # check previous block for image description info
+                    if idx > 1 and self.pdf_json[idx-1]['type'] == 'text' and self.pdf_json[idx-1].get('text') is not None:
+                        prev_item = self.pdf_json[idx-1]
+                        mtch_rslts = re.finditer(IMG_REGX_NAME_PTRN, prev_item['text'], re.IGNORECASE)
+
+                        prev_tbl_ids = []
+                        for match in mtch_rslts:
+                            prev_tbl_ids.append(match.group(0)) 
+
+                        for id in prev_tbl_ids:
+                            if id not in tbl_id_lst:
+                                prev_id = id
+                                prev_pos = prev_item['text'].index(id)
+                                prev_tbl_ids = prev_tbl_ids.remove(id)
+                                break
+                    
+                    if next_pos < prev_pos:
+                        item['id'] = next_id
+                        item['related_ids'] = next_img_ids
+                        item['if_aligned'] = True
+                        item['table_caption'] = [next_item['text']]
+                        next_item['if_aligned'] = False
+
+                    elif prev_pos < next_pos:
+                        item['id'] = prev_id
+                        item['related_ids'] = prev_img_ids
+                        item['if_aligned'] = True
+                        item['table_caption'] = [prev_item['text']]
+                        prev_item['if_aligned'] = False
+                        
+                else:
+                    desc = "\n".join(item.get('img_caption', [])) + "\n" + "\n".join(item.get('img_footnote', []))
+                    mtch_rslts = re.finditer(IMG_REGX_NAME_PTRN, desc, re.IGNORECASE)
+
+                    tbl_ids = []
+                    for match in mtch_rslts:
+                        tbl_ids.append(match.group(0)) 
+                    
+                    for id in tbl_ids:
+                        if id not in tbl_id_lst:
+                            item['id'] = id
+                            item['related_ids'] = tbl_ids.remove(id)
+                            item['if_aligned'] = True
+                            break
